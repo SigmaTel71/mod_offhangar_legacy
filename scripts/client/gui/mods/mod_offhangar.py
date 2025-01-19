@@ -12,6 +12,7 @@ from debug_utils import LOG_CURRENT_EXCEPTION
 from gui.Scaleform.Login import Login
 from gui.Scaleform.gui_items.Vehicle import Vehicle
 from helpers.time_utils import _TimeCorrector, _g_instance
+from nations import INDICES
 from predefined_hosts import g_preDefinedHosts
 
 from gui.mods.offhangar.logging import *
@@ -54,9 +55,9 @@ def Shop__onSyncComplete(baseFunc, baseSelf, syncID, data):
 			1: 250,
 			3: 650,
 			7: 1250,
-			360: 24000,
+			30: 2500,
 			180: 13500,
-			30: 2500
+			360: 24000
 		},
 		'winXPFactorMode': 0,
 		'sellPriceModif': 0.5,
@@ -91,24 +92,10 @@ def Shop__onSyncComplete(baseFunc, baseSelf, syncID, data):
 		'dailyXPFactor': 2,
 		'changeRoleCost': 500,
 		'items': getOfflineShopItems(),
-		'customization': {
-			0: {'camouflages': {}},
-			1: {'camouflages': {}},
-			2: {'camouflages': {}},
-			3: {'camouflages': {}},
-			4: {'camouflages': {}},
-			5: {'camouflages': {}},
-			6: {'camouflages': {}},
-			7: {'camouflages': {}}
-		},
+		'customization': dict((nation, {'camouflages': {}}) for nation in INDICES.values()),
 		'isEnabledBuyingGoldShellsForCredits': True,
 		'slotsPrices': (9, [300]),
 		'freeXPToTManXPRate': 10,
-		'defaults': {
-			'items': {},
-			'freeXPToTManXPRate': 0,
-			'goodies': {'prices': {}}
-		},
 		'sellPriceFactor': 0.5,
 		'isEnabledBuyingGoldEqsForCredits': True,
 		'playerInscriptionCost': {

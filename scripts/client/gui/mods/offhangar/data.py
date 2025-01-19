@@ -2,8 +2,8 @@ import functools
 import time
 from itertools import cycle
 
-import nations
 import items
+import nations
 from AccountCommands import VEHICLE_SETTINGS_FLAG
 from constants import ACCOUNT_ATTR
 from items import vehicles, ITEM_TYPE_INDICES, _xml
@@ -24,8 +24,8 @@ LOG_DEBUG = functools.partial(doLog, '[DEBUG]')
 def getOfflineShopItems():
 	shopItems = {}
 	for nationIdx in INDICES.values():
-		nationShopItems = {}
-		nationShopItemsIDs = []
+		shopItems[nationIdx] = dict((itemType, ({}, set())) for itemType in items.SIMPLE_ITEM_TYPE_INDICES)
+		shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']] = ({}, set())
 
 		xmlPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/list.xml'
 		section = ResMgr.openSection(xmlPath)
@@ -37,18 +37,34 @@ def getOfflineShopItems():
 			# Read additional price data
 			xmlVehPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/' + vname + '.xml'
 			vehSec = ResMgr.openSection(xmlVehPath)
-			vehCtx = (None, xmlVehPath)
-			priceFactorCamo = _xml.readFloat(vehCtx, vehSec, 'camouflage/priceFactor')
-			hornPriceFactor = _xml.readFloat(vehCtx, vehSec, 'horns/priceFactor')
+			priceFactorCamo = vehSec.readFloat('camouflage/priceFactor')
+			hornPriceFactor = vehSec.readFloat('horns/priceFactor')
 			ResMgr.purge(xmlVehPath, True)
 
 			id = _xml.readInt(ctx, vsection, 'id', 0, 255)
 
-			nationShopItems[id] = (price[0], price[1], priceFactorCamo, hornPriceFactor)
-			nationShopItemsIDs.append(id)
+			shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']][0][id] = (price[0], price[1], priceFactorCamo, hornPriceFactor)
+			shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']][1].add(id)
 
 		ResMgr.purge(xmlPath, True)
-		shopItems[nationIdx] = {ITEM_TYPE_INDICES['vehicle']: [nationShopItems, nationShopItemsIDs]}
+
+		'''
+		compsXmlPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/components/'
+		section = ResMgr.openSection(compsXmlPath + 'shells.xml')
+
+		for vname, vsection in section.items():
+			if vname == 'icons' or vsection.readBool("notInShop", False):
+				continue
+
+			ctx = (None, xmlPath + '/' + vname)
+			price = _xml.readPrice(ctx, vsection, 'price')
+			id = _xml.readInt(ctx, vsection, 'id', 0, 255)
+
+			shopItems[nationIdx][ITEM_TYPE_INDICES['shell']][0][id] = (price[0], price[1], 0, 0)
+			shopItems[nationIdx][ITEM_TYPE_INDICES['shell']][1].add(id)
+
+		ResMgr.purge(compsXmlPath + 'shells.xml', True)
+		'''
 
 	return shopItems
 
@@ -99,9 +115,7 @@ def getOfflineInventory():
 
 		i += 1
 
-	return {
-		'inventory': data
-	}
+	return {'inventory': data}
 
 def getOfflineStats():
 	unlocksSet = set()
@@ -139,7 +153,6 @@ def getOfflineStats():
 			'berths': 40,
 			'accOnline': 0,
 			'gold': 1000000,
-			'crystal': 1000,
 			'isFinPswdVerified': True,
 			'finPswdAttemptsLeft': 0,
 			'denunciationsLeft': 0,
