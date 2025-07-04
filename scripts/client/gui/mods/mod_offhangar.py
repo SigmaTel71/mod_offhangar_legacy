@@ -8,7 +8,7 @@ import account_shared
 from ConnectionManager import connectionManager
 from GameSessionController import _GameSessionController
 from account_helpers.Shop import Shop
-from debug_utils import LOG_CURRENT_EXCEPTION
+from debug_utils import LOG_CURRENT_EXCEPTION, LOG_ERROR
 from gui.Scaleform.Login import Login
 from gui.Scaleform.gui_items.Vehicle import Vehicle
 from helpers.time_utils import _TimeCorrector, _g_instance
@@ -23,6 +23,7 @@ from gui.mods.offhangar.requests import *
 
 Account.LOG_DEBUG = LOG_DEBUG
 Account.LOG_NOTE = LOG_NOTE
+Account.LOG_ERROR = LOG_ERROR
 
 g_preDefinedHosts._hosts.append(g_preDefinedHosts._makeHostItem(OFFLINE_SERVER_ADDRESS, OFFLINE_SERVER_ADDRESS, OFFLINE_SERVER_ADDRESS))
 
