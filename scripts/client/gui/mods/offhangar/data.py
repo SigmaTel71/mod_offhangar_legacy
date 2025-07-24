@@ -21,22 +21,58 @@ doLog = functools.partial(doLog, 'OFFHANGAR')
 LOG_NOTE = functools.partial(doLog, '[NOTE]')
 LOG_DEBUG = functools.partial(doLog, '[DEBUG]')
 
+itemTypeNameMap = {
+	'guns':    ('vehicleGun', g_cache.guns),
+	'turrets': ('vehicleTurret', g_cache.turrets),
+	'engines': ('vehicleEngine', g_cache.engines),
+	'chassis': ('vehicleChassis', g_cache.chassis),
+	'radios':  ('vehicleRadio', g_cache.radios),
+	'shells':  ('shell', g_cache.shells)
+}
+
+commonItemTypeNameMap = {'optional_devices': ('optionalDevice', g_cache.optionalDevices), 'equipments': ('equipment', g_cache.equipments)}
+
 def getOfflineShopItems():
-	shopItems = {}
+	shopItems = {nations.NONE_INDEX: {ITEM_TYPE_INDICES['optionalDevice']: ({}, set()), ITEM_TYPE_INDICES['equipment']: ({}, set())}}
+	
 	for nationIdx in INDICES.values():
 		shopItems[nationIdx] = dict((itemType, ({}, set())) for itemType in items.SIMPLE_ITEM_TYPE_INDICES)
 		shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']] = ({}, set())
+		
+		# Vehicles
+		listXmlPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/list.xml'
 
-		xmlPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/list.xml'
-		section = ResMgr.openSection(xmlPath)
+		listSection = ResMgr.openSection(listXmlPath)
+		turretsIDs_section = ResMgr.openSection(vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/components/turrets.xml')['ids']
+		chassisIDs_section = ResMgr.openSection(vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/components/chassis.xml')['ids']
 
-		for vname, vsection in section.items():
-			ctx = (None, xmlPath + '/' + vname)
+		for vname, vsection in listSection.items():
+			ctx = (None, listXmlPath + '/' + vname)
 			price = _xml.readPrice(ctx, vsection, 'price')
 
 			# Read additional price data
 			xmlVehPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/' + vname + '.xml'
 			vehSec = ResMgr.openSection(xmlVehPath)
+
+			# Read turrets and chassis
+			for turretName, turretSection in vehSec['turrets0'].items():
+				itemData = itemTypeNameMap['turrets']
+
+				turretID = _xml.readInt(ctx, turretsIDs_section, turretName)
+				turretPrice = _xml.readPrice(ctx, turretSection, 'price')
+				turret = itemData[1](nationIdx)[turretID]
+
+				shopItems[nationIdx][ITEM_TYPE_INDICES[itemData[0]]][0][turret['compactDescr']] = turretPrice
+
+			for chassisName, chassisSection in vehSec['chassis'].items():
+				itemData = itemTypeNameMap['chassis']
+
+				chassisID = _xml.readInt(ctx, chassisIDs_section, chassisName)
+				chassisPrice = _xml.readPrice(ctx, chassisSection, 'price')
+				chassis = itemData[1](nationIdx)[chassisID]
+
+				shopItems[nationIdx][ITEM_TYPE_INDICES[itemData[0]]][0][chassis['compactDescr']] = chassisPrice
+			
 			priceFactorCamo = vehSec.readFloat('camouflage/priceFactor')
 			hornPriceFactor = vehSec.readFloat('horns/priceFactor')
 			ResMgr.purge(xmlVehPath, True)
@@ -46,6 +82,46 @@ def getOfflineShopItems():
 			shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']][0][id] = (price[0], price[1], priceFactorCamo, hornPriceFactor)
 			shopItems[nationIdx][ITEM_TYPE_INDICES['vehicle']][1].add(id)
 
+		# Modules
+		for itemTypeName, itemData in itemTypeNameMap.items():
+
+			xmlPath = vehicles._VEHICLE_TYPE_XML_PATH + AVAILABLE_NAMES[nationIdx] + '/components/' + itemTypeName + '.xml'
+			section = ResMgr.openSection(xmlPath)
+			moduleIDs_section = section['ids']
+			modules_section = section['shared']
+
+			if itemTypeName == 'shells':
+				for moduleName, moduleSection in section.items():
+					if moduleName != 'icons':
+						ctx = (None, xmlPath + '/' + moduleName)
+						id = _xml.readInt(ctx, moduleSection, 'id')
+						price = _xml.readPrice(ctx, moduleSection, 'price')
+						module = g_cache.shells(nationIdx)[id]
+
+						shopItems[nationIdx][ITEM_TYPE_INDICES['shell']][0][module['compactDescr']] = price
+			else:
+				for moduleName, moduleSection in modules_section.items():
+					ctx = (None, xmlPath + '/' + moduleName)
+					id = _xml.readInt(ctx, moduleIDs_section, moduleName)
+					price = _xml.readPrice(ctx, moduleSection, 'price')
+					module = itemData[1](nationIdx)[id]
+
+					shopItems[nationIdx][ITEM_TYPE_INDICES[itemData[0]]][0][module['compactDescr']] = price
+
+		# Common (OptDevices, Equipment)
+		for commonItemTypeName, commonItemData in commonItemTypeNameMap.items():
+
+			xmlPath = vehicles._VEHICLE_TYPE_XML_PATH + 'common/' + commonItemTypeName + '.xml'
+			section = ResMgr.openSection(xmlPath)
+
+			for oDname, oDsection in section.items():
+				ctx = (None, xmlPath + '/' + oDname)
+				id = _xml.readInt(ctx, oDsection, 'id')
+				price = _xml.readPrice(ctx, oDsection, 'price')
+				device = commonItemData[1]()[id]
+				
+				shopItems[nations.NONE_INDEX][ITEM_TYPE_INDICES[commonItemData[0]]][0][device.compactDescr] = price
+			
 		ResMgr.purge(xmlPath, True)
 
 		'''
@@ -122,6 +198,8 @@ def getOfflineStats():
 	vehiclesSet = set()
 
 	for nationID in nations.INDICES.values():
+		unlocksSet.update([vehicles.makeIntCompactDescrByID('optionalDevice', nationID, i) for i in g_cache.optionalDevices().keys()])
+		unlocksSet.update([vehicles.makeIntCompactDescrByID('equipment', nationID, i) for i in g_cache.equipments().keys()])
 		unlocksSet.update([vehicles.makeIntCompactDescrByID('vehicleChassis', nationID, i) for i in g_cache.chassis(nationID).keys()])
 		unlocksSet.update([vehicles.makeIntCompactDescrByID('vehicleEngine', nationID, i) for i in g_cache.engines(nationID).keys()])
 		unlocksSet.update([vehicles.makeIntCompactDescrByID('vehicleFuelTank', nationID, i) for i in g_cache.fuelTanks(nationID).keys()])
