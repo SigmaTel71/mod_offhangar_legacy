@@ -1,0 +1,41 @@
+{
+	"folders": [
+		{
+			"path": ".",
+		}
+	],
+	"settings": {
+		"LSP": {
+			"LSP-pylsp": {
+				"enabled": true,
+				"settings": {
+					"pylsp.plugins.jedi.extra_paths": [
+						"$project_path/",
+						/*
+						Set paths to your decompiled scripts of target World of Tanks version
+						You must set paths at least to:
+
+						/res/scripts/common/
+						/res/scripts/client_common/	(>= 0.9.17)
+						/res_bw/scripts/common/ 	(<= 0.9.16)
+						*/
+						"С:/Games/World_of_Tanks/res/scripts/client/",
+						"С:/Games/World_of_Tanks/res/scripts/common/",
+						"C:/Games/World_of_Tanks/res_bw/scripts/client/",
+						"C:/Games/World_of_Tanks/res_bw/scripts/common/"
+					],
+					"pylsp.plugins.autopep8.enabled": false,
+					"pylsp.plugins.mccabe.enabled": false,
+					"pylsp.plugins.pycodestyle.enabled": false,
+					"pylsp.plugins.flake8.enabled": true
+				}
+			},
+			"LSP-json": {
+				"enabled": true,
+				"settings": {
+					"json.format.enable": false
+				}
+			}
+		}
+	}
+}
